@@ -1,0 +1,323 @@
+{
+  "name": "KAP Invoice Extractor",
+  "nodes": [
+    {
+      "id": "n-trigger",
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -512,
+        0
+      ],
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {},
+        "options": {
+          "dataPropertyAttachmentsPrefixName": "attachment_",
+          "downloadAttachments": true
+        }
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "REPLACE_ME",
+          "name": "Gmail account"
+        }
+      },
+      "notes": "Pollt jede Minute auf neue Mails mit PDF-Anhang."
+    },
+    {
+      "id": "n-get",
+      "name": "Get a message",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -288,
+        0
+      ],
+      "parameters": {
+        "operation": "get",
+        "messageId": "={{ $json.id }}",
+        "simple": false,
+        "options": {
+          "dataPropertyAttachmentsPrefixName": "attachment_",
+          "downloadAttachments": true
+        }
+      },
+      "webhookId": "REPLACE_ME",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "REPLACE_ME",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "id": "n-extract",
+      "name": "Extract from File",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        0
+      ],
+      "parameters": {
+        "operation": "pdf",
+        "binaryPropertyName": "attachment_0",
+        "options": {
+          "joinPages": true
+        }
+      }
+    },
+    {
+      "id": "n-agent",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        128,
+        0
+      ],
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.text }}",
+        "options": {
+          "systemMessage": "Extrahiere die Rechnungsdaten aus dem folgenden Text.\nAntworte ausschliesslich als gueltiges JSON-Objekt.\nSchreibe die ECHTEN Werte aus der Rechnung in die Felder.\nFalls ein Wert fehlt, setze null.\nKein Text, keine Erklaerungen, keine Backticks, keine Markdown-Formatierung.\n\n{\n  \"Hoehe_der_Kapitalertraege\": \"\",\n  \"Gewinn_Aktienveraeusserungen\": \"\",\n  \"Gewinn_AltAnteile\": \"\",\n  \"Ersatzbemessungsgrundlage\": \"\",\n  \"Sparer_Pauschbetrages\": \"\",\n  \"Kapitalertragsteuer\": \"\",\n  \"Solidaritaetszuschlag\": \"\",\n  \"Kirchensteuer_zur_Kapitalsteuer_Evangelisch\": \"\",\n  \"Kirchensteuer_zur_Kapitalsteuer\": \"\",\n  \"Summe_angerechnete_auslaendische_Steuer\": \"\",\n  \"Summe_anrechenbare_nicht_angerechnete_auslaendische_Steuer\": \"\"\n}"
+        }
+      }
+    },
+    {
+      "id": "n-model",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        128,
+        176
+      ],
+      "parameters": {
+        "options": {}
+      },
+      "credentials": {
+        "googlePalmApi": {
+          "id": "REPLACE_ME",
+          "name": "Gemini API account"
+        }
+      }
+    },
+    {
+      "id": "n-fields",
+      "name": "Edit Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        448,
+        0
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "Hoehe_der_Kapitalertraege",
+              "value": "={{ JSON.parse($json['output']).Hoehe_der_Kapitalertraege }}",
+              "type": "string"
+            },
+            {
+              "id": "2",
+              "name": "Gewinn_Aktienveraeusserung",
+              "value": "={{ JSON.parse($json['output']).Gewinn_Aktienveraeusserungen }}",
+              "type": "string"
+            },
+            {
+              "id": "3",
+              "name": "Gewinn_AltAnteile",
+              "value": "={{ JSON.parse($json['output']).Gewinn_AltAnteile }}",
+              "type": "string"
+            },
+            {
+              "id": "4",
+              "name": "Ersatzbemessungsgrundlage",
+              "value": "={{ JSON.parse($json['output']).Ersatzbemessungsgrundlage }}",
+              "type": "string"
+            },
+            {
+              "id": "5",
+              "name": "Sparer_Pauschbetrages",
+              "value": "={{ JSON.parse($json['output']).Sparer_Pauschbetrages }}",
+              "type": "string"
+            },
+            {
+              "id": "6",
+              "name": "Kapitalertragsteuer",
+              "value": "={{ JSON.parse($json['output']).Kapitalertragsteuer }}",
+              "type": "string"
+            },
+            {
+              "id": "7",
+              "name": "Solidaritaetszuschlag",
+              "value": "={{ JSON.parse($json['output']).Solidaritaetszuschlag }}",
+              "type": "string"
+            },
+            {
+              "id": "8",
+              "name": "Kirchensteuer_zur_Kapitalsteuer_Evangelisch",
+              "value": "={{ JSON.parse($json['output']).Kirchensteuer_zur_Kapitalsteuer_Evangelisch }}",
+              "type": "string"
+            },
+            {
+              "id": "9",
+              "name": "Kirchensteuer_zur_Kapitalsteuer",
+              "value": "={{ JSON.parse($json['output']).Kirchensteuer_zur_Kapitalsteuer }}",
+              "type": "string"
+            },
+            {
+              "id": "10",
+              "name": "Summe_angerechnete_auslaendische_Steuer",
+              "value": "={{ JSON.parse($json['output']).Summe_angerechnete_auslaendische_Steuer }}",
+              "type": "string"
+            },
+            {
+              "id": "11",
+              "name": "Summe_anrechenbare_nicht_angerechnete_auslaendische_Steuer",
+              "value": "={{ JSON.parse($json['output']).Summe_anrechenbare_nicht_angerechnete_auslaendische_Steuer }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "n-csv",
+      "name": "Convert to File",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        656,
+        0
+      ],
+      "parameters": {
+        "options": {}
+      }
+    },
+    {
+      "id": "n-send",
+      "name": "Send email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        864,
+        0
+      ],
+      "parameters": {
+        "fromEmail": "={{ $env.MAIL_FROM }}",
+        "toEmail": "={{ $env.MAIL_TO }}",
+        "subject": "KAP Auswertung CSV",
+        "emailFormat": "both",
+        "text": "Anbei die extrahierten KAP-Daten als CSV.",
+        "options": {
+          "attachments": "data"
+        }
+      },
+      "webhookId": "REPLACE_ME",
+      "credentials": {
+        "smtp": {
+          "id": "REPLACE_ME",
+          "name": "SMTP account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a message": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Send email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": []
+}
